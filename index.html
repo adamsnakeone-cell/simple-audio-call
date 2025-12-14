@@ -37,6 +37,10 @@
             text-align: center;
             margin-bottom: 30px;
             font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
         
         .room-section {
@@ -114,6 +118,7 @@
             cursor: not-allowed;
             transform: none !important;
             box-shadow: none !important;
+            opacity: 0.7;
         }
         
         .status-indicator {
@@ -124,6 +129,7 @@
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
+            min-height: 50px;
         }
         
         .status-dot {
@@ -135,7 +141,7 @@
         
         .status-dot.connected { background: #4CAF50; animation: pulse 2s infinite; }
         .status-dot.connecting { background: #FFC107; animation: pulse 1s infinite; }
-        .status-dot.error { background: #f44336; }
+        .status-dot.disconnected { background: #f44336; }
         
         @keyframes pulse {
             0% { opacity: 1; }
@@ -150,14 +156,14 @@
             border-radius: 8px;
             margin-top: 20px;
             font-family: 'Courier New', monospace;
-            font-size: 14px;
-            max-height: 200px;
+            font-size: 12px;
+            max-height: 150px;
             overflow-y: auto;
         }
         
         .log-entry {
-            margin-bottom: 5px;
-            padding: 3px 0;
+            margin-bottom: 3px;
+            padding: 2px 0;
             border-bottom: 1px solid #333;
         }
         
@@ -169,7 +175,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -240,7 +246,17 @@
             height: 100%;
             background: #4CAF50;
             width: 0%;
-            transition: width 0.3s;
+            transition: width 0.2s;
+        }
+        
+        .audio-test {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
         }
         
         @media (max-width: 600px) {
@@ -260,7 +276,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎧 Веб Звонилка</h1>
+        <h1><span>🎧</span> Веб Звонилка</h1>
         
         <div class="room-section">
             <input type="text" id="roomId" placeholder="Введите ID комнаты">
@@ -292,15 +308,22 @@
             <div class="volume-level" id="volumeLevel"></div>
         </div>
         
+        <div class="audio-test">
+            <button onclick="testMicrophone()" style="padding: 8px 15px; background: #9c27b0; font-size: 14px;">
+                🎤 Тест микрофона
+            </button>
+            <span id="testStatus"></span>
+        </div>
+        
         <div class="log-container" id="logContainer"></div>
     </div>
     
-    <!-- Модальное окно входящего вызова -->
+    <!-- Модальные окна -->
     <div class="modal" id="incomingCallModal">
         <div class="modal-content">
-            <div style="font-size: 48px; margin-bottom: 20px;">📞</div>
-            <div class="call-info ringing">Входящий вызов</div>
-            <p>Из комнаты: <strong id="callerRoomId"></strong></p>
+            <div style="font-size: 48px; margin-bottom: 20px; animation: ringing 1s infinite;">📞</div>
+            <div class="call-info">Входящий вызов!</div>
+            <p>Комната: <strong id="callerRoomId"></strong></p>
             <div class="modal-buttons">
                 <button class="accept-btn" onclick="acceptCall()">✅ Принять</button>
                 <button class="reject-btn" onclick="rejectCall()">❌ Отклонить</button>
@@ -308,26 +331,27 @@
         </div>
     </div>
     
-    <!-- Модальное окно ожидания ответа -->
     <div class="modal" id="waitingModal">
         <div class="modal-content">
             <div style="font-size: 48px; margin-bottom: 20px; animation: pulse 1s infinite;">⏳</div>
             <div class="call-info">Ожидание ответа...</div>
-            <p>Вызываем пользователя в комнате</p>
+            <p>Вызываем в комнату <strong id="waitingRoomId"></strong></p>
             <button class="reject-btn" onclick="cancelCall()">❌ Отменить</button>
         </div>
     </div>
     
-    <!-- Модальное окно активного звонка -->
     <div class="modal" id="activeCallModal">
         <div class="modal-content">
             <div style="font-size: 48px; margin-bottom: 20px;">🎧</div>
             <div class="call-info">Идет разговор</div>
-            <p>ID комнаты: <strong id="activeRoomId"></strong></p>
-            <div class="volume-indicator" style="margin: 30px 0;">
-                <div class="volume-level" id="callVolumeLevel"></div>
+            <p>Комната: <strong id="activeRoomId"></strong></p>
+            <div style="margin: 20px 0;">
+                <div style="margin-bottom: 10px;">Громкость:</div>
+                <div class="volume-indicator">
+                    <div class="volume-level" id="callVolumeLevel"></div>
+                </div>
             </div>
-            <button class="reject-btn" onclick="hangUp()">
+            <button class="reject-btn" onclick="hangUp()" style="padding: 15px 30px;">
                 <span>📞</span> Завершить звонок
             </button>
         </div>
@@ -342,6 +366,7 @@
 
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let localStream = null;
+        let remoteStream = null;
         let peerConnection = null;
         let database = null;
         let roomRef = null;
@@ -352,8 +377,12 @@
         let audioContext = null;
         let analyser = null;
         let microphone = null;
+        let lastOfferTime = 0;
+        let lastAnswerTime = 0;
+        let processedOffers = new Set();
+        let processedAnswers = new Set();
 
-        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ МОДАЛОК ==========
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
         function showModal(modalId) {
             document.getElementById(modalId).style.display = 'flex';
         }
@@ -362,40 +391,6 @@
             document.getElementById(modalId).style.display = 'none';
         }
         
-        function showWaitingModal() {
-            showModal('waitingModal');
-        }
-        
-        function showIncomingCallModal() {
-            document.getElementById('callerRoomId').textContent = currentRoomId;
-            showModal('incomingCallModal');
-        }
-        
-        function showActiveCallModal() {
-            document.getElementById('activeRoomId').textContent = currentRoomId;
-            showModal('activeCallModal');
-        }
-
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
-        async function init() {
-            try {
-                // Инициализация Firebase
-                firebase.initializeApp(firebaseConfig);
-                database = firebase.database();
-                log('Firebase инициализирован', 'success');
-                
-                // Генерация случайного ID комнаты
-                document.getElementById('roomId').value = Math.floor(1000 + Math.random() * 9000);
-                
-                updateStatus('Готов к подключению', 'connected');
-                
-            } catch (error) {
-                log(`Ошибка инициализации: ${error.message}`, 'error');
-                updateStatus('Ошибка подключения', 'error');
-            }
-        }
-
-        // ========== ЛОГИРОВАНИЕ ==========
         function log(message, type = 'info') {
             const logContainer = document.getElementById('logContainer');
             const timestamp = new Date().toLocaleTimeString();
@@ -416,23 +411,72 @@
             console.log(`[${type}] ${message}`);
         }
 
-        // ========== ОБНОВЛЕНИЕ СТАТУСА ==========
         function updateStatus(text, state = '') {
             document.getElementById('statusText').textContent = text;
             const dot = document.getElementById('statusDot');
             dot.className = 'status-dot ' + state;
             
-            // Обновляем состояние кнопок
             const startBtn = document.getElementById('startCallBtn');
             const hangupBtn = document.getElementById('hangupBtn');
             
-            if (state === 'connected' && currentRoomId) {
+            if (state === 'connected' && currentRoomId && callStatus === 'idle') {
                 startBtn.disabled = false;
             } else {
                 startBtn.disabled = true;
             }
             
             hangupBtn.disabled = callStatus !== 'in_call';
+        }
+
+        // ========== ТЕСТ МИКРОФОНА ==========
+        async function testMicrophone() {
+            try {
+                const testStatus = document.getElementById('testStatus');
+                testStatus.textContent = 'Тестируем микрофон...';
+                testStatus.style.color = '#FFC107';
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                
+                // Создаем аудио контекст для теста
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+                source.connect(analyser);
+                
+                // Проверяем есть ли звук
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(dataArray);
+                
+                let hasSound = dataArray.some(value => value > 10);
+                
+                if (hasSound) {
+                    testStatus.textContent = '✅ Микрофон работает';
+                    testStatus.style.color = '#4CAF50';
+                    log('Тест микрофона: УСПЕХ', 'success');
+                } else {
+                    testStatus.textContent = '⚠️ Микрофон есть, но звука нет';
+                    testStatus.style.color = '#FF9800';
+                    log('Тест микрофона: звук не обнаружен', 'warning');
+                }
+                
+                // Очистка через 3 секунды
+                setTimeout(() => {
+                    stream.getTracks().forEach(track => track.stop());
+                    audioContext.close();
+                    testStatus.textContent = '';
+                }, 3000);
+                
+            } catch (error) {
+                document.getElementById('testStatus').textContent = '❌ Нет доступа к микрофону';
+                document.getElementById('testStatus').style.color = '#f44336';
+                log(`Тест микрофона ОШИБКА: ${error.message}`, 'error');
+            }
         }
 
         // ========== РАБОТА С КОМНАТАМИ ==========
@@ -457,23 +501,35 @@
         }
 
         function connectToRoom(isCreator) {
-            if (!database) return;
+            if (!database) {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+            }
             
             isCaller = isCreator;
+            processedOffers.clear();
+            processedAnswers.clear();
+            
+            // Отключаем старый listener если есть
+            if (roomRef) {
+                roomRef.off();
+            }
             
             // Подключаемся к комнате
             roomRef = database.ref(`rooms/${currentRoomId}`);
             
-            // Очищаем старые данные если создаем комнату
+            // Очищаем комнату если создаем
             if (isCreator) {
-                roomRef.remove();
+                roomRef.remove().then(() => {
+                    log(`Комната ${currentRoomId} создана`, 'success');
+                });
             }
             
-            // Слушаем изменения в комнате
+            // Слушаем ТОЛЬКО изменения callRequest и callResponse
             roomRef.on('value', handleRoomUpdate);
             
             updateStatus(`В комнате: ${currentRoomId}`, 'connected');
-            log(`Подключен к комнате ${currentRoomId}`, 'success');
+            log(`${isCreator ? 'Создана' : 'Вошли в'} комнату ${currentRoomId}`, 'success');
         }
 
         // ========== ОБРАБОТКА СОБЫТИЙ КОМНАТЫ ==========
@@ -481,30 +537,48 @@
             const data = snapshot.val();
             if (!data) return;
             
-            console.log('Обновление комнаты:', data);
-            
             // Входящий вызов
             if (data.callRequest && !isCaller && callStatus === 'idle') {
-                showIncomingCallModal();
-                callStatus = 'ringing';
-                updateStatus('Входящий вызов', 'connecting');
+                const requestId = data.callRequest.timestamp;
+                if (!processedOffers.has(requestId)) {
+                    processedOffers.add(requestId);
+                    document.getElementById('callerRoomId').textContent = currentRoomId;
+                    showModal('incomingCallModal');
+                    callStatus = 'ringing';
+                    updateStatus('Входящий вызов!', 'connecting');
+                    log('Получен запрос на вызов', 'info');
+                }
             }
             
             // Ответ на вызов
-            if (data.callResponse) {
-                handleCallResponse(data.callResponse);
+            if (data.callResponse && callStatus === 'calling') {
+                const responseId = data.callResponse.timestamp;
+                if (!processedAnswers.has(responseId)) {
+                    processedAnswers.add(responseId);
+                    handleCallResponse(data.callResponse);
+                }
             }
             
-            // WebRTC сигналы
-            if (data.offer && !isCaller && peerConnection && !peerConnection.remoteDescription) {
-                handleOffer(data.offer);
+            // WebRTC сигналы - обрабатываем только если уже есть соединение
+            if (data.offer && !isCaller && peerConnection && callStatus === 'in_call') {
+                const offerId = data.offer.sdp.substring(0, 50); // Уникальный ID оффера
+                if (!processedOffers.has(offerId) && Date.now() - lastOfferTime > 1000) {
+                    processedOffers.add(offerId);
+                    lastOfferTime = Date.now();
+                    handleOffer(data.offer);
+                }
             }
             
-            if (data.answer && isCaller && peerConnection) {
-                handleAnswer(data.answer);
+            if (data.answer && isCaller && peerConnection && callStatus === 'in_call') {
+                const answerId = data.answer.sdp.substring(0, 50);
+                if (!processedAnswers.has(answerId) && Date.now() - lastAnswerTime > 1000) {
+                    processedAnswers.add(answerId);
+                    lastAnswerTime = Date.now();
+                    handleAnswer(data.answer);
+                }
             }
             
-            if (data.iceCandidate && peerConnection) {
+            if (data.iceCandidate && peerConnection && callStatus === 'in_call') {
                 handleIceCandidate(data.iceCandidate);
             }
             
@@ -519,17 +593,17 @@
             if (!currentRoomId || callStatus !== 'idle') return;
             
             callStatus = 'calling';
-            showWaitingModal();
+            document.getElementById('waitingRoomId').textContent = currentRoomId;
+            showModal('waitingModal');
             
             // Отправляем запрос на вызов
-            roomRef.update({
-                callRequest: {
-                    from: localUid,
-                    timestamp: Date.now()
-                }
-            });
+            const callRequest = {
+                from: localUid,
+                timestamp: Date.now()
+            };
             
-            log('Отправлен запрос на вызов', 'info');
+            roomRef.update({ callRequest });
+            log('Запрос на вызов отправлен', 'info');
         }
 
         function acceptCall() {
@@ -537,14 +611,13 @@
             callStatus = 'in_call';
             
             // Отправляем подтверждение
-            roomRef.update({
-                callResponse: {
-                    accepted: true,
-                    from: localUid,
-                    timestamp: Date.now()
-                }
-            });
+            const callResponse = {
+                accepted: true,
+                from: localUid,
+                timestamp: Date.now()
+            };
             
+            roomRef.update({ callResponse });
             startWebRTC(false);
             log('Вызов принят', 'success');
         }
@@ -556,11 +629,12 @@
             roomRef.update({
                 callResponse: {
                     accepted: false,
-                    from: localUid
+                    from: localUid,
+                    timestamp: Date.now()
                 }
             });
             
-            updateStatus('Вызов отклонен', '');
+            updateStatus('Вызов отклонен', 'disconnected');
             log('Вызов отклонен', 'warning');
         }
 
@@ -569,12 +643,13 @@
                 hideModal('waitingModal');
                 callStatus = 'in_call';
                 startWebRTC(true);
-                log('Вызов принят другим пользователем', 'success');
+                log('✅ Вызов принят другим пользователем', 'success');
             } else {
                 hideModal('waitingModal');
                 callStatus = 'idle';
-                alert('Вызов отклонен');
+                updateStatus('Вызов отклонен', 'disconnected');
                 log('Вызов отклонен другим пользователем', 'warning');
+                setTimeout(() => updateStatus(`В комнате: ${currentRoomId}`, 'connected'), 2000);
             }
         }
 
@@ -582,7 +657,8 @@
             hideModal('waitingModal');
             callStatus = 'idle';
             roomRef.update({ callRequest: null });
-            updateStatus('Вызов отменен', '');
+            updateStatus('Вызов отменен', 'disconnected');
+            setTimeout(() => updateStatus(`В комнате: ${currentRoomId}`, 'connected'), 2000);
         }
 
         // ========== WEBRTC ==========
@@ -595,19 +671,25 @@
                     audio: {
                         echoCancellation: true,
                         noiseSuppression: true,
-                        autoGainControl: true
+                        autoGainControl: true,
+                        channelCount: 1
                     }
                 });
                 
                 log('Микрофон подключен', 'success');
                 
-                // Создаем PeerConnection
+                // Создаем PeerConnection с улучшенными настройками
                 const config = {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' }
-                    ]
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' }
+                    ],
+                    iceCandidatePoolSize: 10,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
                 };
                 
                 peerConnection = new RTCPeerConnection(config);
@@ -629,7 +711,9 @@
                 setupAudioVisualization();
                 
                 // Показываем окно активного звонка
-                showActiveCallModal();
+                document.getElementById('activeRoomId').textContent = currentRoomId;
+                showModal('activeCallModal');
+                updateStatus('Разговор активен', 'connected');
                 
             } catch (error) {
                 log(`Ошибка WebRTC: ${error.message}`, 'error');
@@ -647,39 +731,73 @@
             };
             
             peerConnection.ontrack = (event) => {
-                log('Получен удаленный аудиопоток', 'success');
-                const audio = document.createElement('audio');
-                audio.autoplay = true;
-                audio.srcObject = event.streams[0];
-                document.body.appendChild(audio);
-                updateStatus('Соединение установлено', 'connected');
+                log('✅ Получен удаленный аудиопоток', 'success');
+                
+                if (!remoteStream) {
+                    remoteStream = new MediaStream();
+                }
+                
+                remoteStream.addTrack(event.track);
+                
+                // Создаем аудио элемент для удаленного потока
+                let remoteAudio = document.getElementById('remoteAudio');
+                if (!remoteAudio) {
+                    remoteAudio = document.createElement('audio');
+                    remoteAudio.id = 'remoteAudio';
+                    remoteAudio.autoplay = true;
+                    remoteAudio.controls = false;
+                    remoteAudio.style.display = 'none';
+                    document.body.appendChild(remoteAudio);
+                }
+                
+                remoteAudio.srcObject = remoteStream;
+                
+                // Проверяем есть ли звук
+                setTimeout(() => {
+                    if (remoteAudio.duration > 0 && !remoteAudio.paused) {
+                        log('🔊 Удаленный звук воспроизводится', 'success');
+                    }
+                }, 1000);
             };
             
             peerConnection.onconnectionstatechange = () => {
-                log(`Состояние соединения: ${peerConnection.connectionState}`, 'webrtc');
+                const state = peerConnection.connectionState;
+                log(`Состояние соединения: ${state}`, 'webrtc');
                 
-                if (peerConnection.connectionState === 'connected') {
-                    log('✅ Соединение установлено! Говорите.', 'success');
+                if (state === 'connected') {
+                    log('✅ Соединение установлено! Можно говорить.', 'success');
                 }
                 
-                if (peerConnection.connectionState === 'disconnected' || 
-                    peerConnection.connectionState === 'failed') {
-                    log('Соединение потеряно', 'error');
-                    hangUp();
+                if (state === 'disconnected' || state === 'failed') {
+                    log('❌ Соединение потеряно', 'error');
+                    setTimeout(() => {
+                        if (peerConnection && peerConnection.connectionState !== 'connected') {
+                            hangUp();
+                        }
+                    }, 2000);
                 }
+            };
+            
+            peerConnection.oniceconnectionstatechange = () => {
+                log(`ICE состояние: ${peerConnection.iceConnectionState}`, 'webrtc');
             };
         }
 
         async function createOffer() {
             try {
-                const offer = await peerConnection.createOffer();
+                const offerOptions = {
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: false
+                };
+                
+                const offer = await peerConnection.createOffer(offerOptions);
                 await peerConnection.setLocalDescription(offer);
                 
                 roomRef.update({
                     offer: offer
                 });
                 
-                log('Предложение отправлено', 'webrtc');
+                log('Предложение WebRTC отправлено', 'webrtc');
             } catch (error) {
                 log(`Ошибка создания предложения: ${error}`, 'error');
             }
@@ -687,6 +805,11 @@
 
         async function handleOffer(offer) {
             try {
+                if (peerConnection.signalingState !== 'stable') {
+                    log('Пропускаем offer - соединение нестабильно', 'warning');
+                    return;
+                }
+                
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
@@ -695,7 +818,7 @@
                     answer: answer
                 });
                 
-                log('Ответ отправлен', 'webrtc');
+                log('Ответ WebRTC отправлен', 'webrtc');
             } catch (error) {
                 log(`Ошибка обработки предложения: ${error}`, 'error');
             }
@@ -704,7 +827,7 @@
         async function handleAnswer(answer) {
             try {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                log('Ответ обработан', 'webrtc');
+                log('Ответ WebRTC обработан', 'webrtc');
             } catch (error) {
                 log(`Ошибка обработки ответа: ${error}`, 'error');
             }
@@ -712,9 +835,11 @@
 
         async function handleIceCandidate(candidate) {
             try {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                if (peerConnection.remoteDescription) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
             } catch (error) {
-                log(`Ошибка добавления ICE кандидата: ${error}`, 'error');
+                log(`Ошибка ICE кандидата: ${error}`, 'error');
             }
         }
 
@@ -726,16 +851,17 @@
                 microphone = audioContext.createMediaStreamSource(localStream);
                 
                 microphone.connect(analyser);
-                analyser.fftSize = 256;
+                analyser.fftSize = 64;
+                analyser.smoothingTimeConstant = 0.8;
                 
                 updateVolume();
             } catch (error) {
-                console.log('Аудио визуализация не доступна:', error);
+                console.log('Визуализация недоступна:', error);
             }
         }
 
         function updateVolume() {
-            if (!analyser) return;
+            if (!analyser || callStatus !== 'in_call') return;
             
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(dataArray);
@@ -745,10 +871,17 @@
                 sum += dataArray[i];
             }
             let average = sum / dataArray.length;
-            let percentage = Math.min(100, (average / 128) * 100);
+            let percentage = Math.min(100, (average / 64) * 100);
             
             document.getElementById('volumeLevel').style.width = percentage + '%';
             document.getElementById('callVolumeLevel').style.width = percentage + '%';
+            
+            // Меняем цвет при разговоре
+            if (percentage > 10) {
+                document.getElementById('callVolumeLevel').style.background = '#4CAF50';
+            } else {
+                document.getElementById('callVolumeLevel').style.background = '#9E9E9E';
+            }
             
             requestAnimationFrame(updateVolume);
         }
@@ -762,6 +895,7 @@
             // Отправляем сигнал о завершении
             if (roomRef) {
                 roomRef.update({ hangup: true });
+                setTimeout(() => roomRef.update({ hangup: null }), 1000);
             }
             
             // Закрываем соединения
@@ -770,10 +904,15 @@
                 peerConnection = null;
             }
             
-            // Останавливаем поток
+            // Останавливаем потоки
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
+            }
+            
+            if (remoteStream) {
+                remoteStream.getTracks().forEach(track => track.stop());
+                remoteStream = null;
             }
             
             // Очищаем аудио контекст
@@ -788,9 +927,13 @@
             hideModal('activeCallModal');
             
             // Удаляем аудио элементы
-            document.querySelectorAll('audio').forEach(audio => audio.remove());
+            const remoteAudio = document.getElementById('remoteAudio');
+            if (remoteAudio) {
+                remoteAudio.srcObject = null;
+                remoteAudio.remove();
+            }
             
-            updateStatus('Звонок завершен', '');
+            updateStatus(`В комнате: ${currentRoomId}`, 'connected');
             log('Звонок завершен', 'info');
         }
 
@@ -800,7 +943,19 @@
             hangUp();
         }
 
-        // ========== ОЧИСТКА ПРИ ЗАКРЫТИИ ==========
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        function init() {
+            try {
+                // Генерация случайного ID комнаты
+                document.getElementById('roomId').value = Math.floor(1000 + Math.random() * 9000);
+                updateStatus('Готов к работе', '');
+                log('Приложение загружено', 'success');
+            } catch (error) {
+                log(`Ошибка инициализации: ${error.message}`, 'error');
+            }
+        }
+
+        // ========== ОЧИСТКА ==========
         window.addEventListener('beforeunload', () => {
             if (roomRef) {
                 roomRef.update({ hangup: true });

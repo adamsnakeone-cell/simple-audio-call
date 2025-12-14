@@ -1,0 +1,10 @@
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log

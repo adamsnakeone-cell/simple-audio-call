@@ -353,6 +353,29 @@
         let analyser = null;
         let microphone = null;
 
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ МОДАЛОК ==========
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+        
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        function showWaitingModal() {
+            showModal('waitingModal');
+        }
+        
+        function showIncomingCallModal() {
+            document.getElementById('callerRoomId').textContent = currentRoomId;
+            showModal('incomingCallModal');
+        }
+        
+        function showActiveCallModal() {
+            document.getElementById('activeRoomId').textContent = currentRoomId;
+            showModal('activeCallModal');
+        }
+
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
         async function init() {
             try {
@@ -458,11 +481,13 @@
             const data = snapshot.val();
             if (!data) return;
             
-            log(`Обновление комнаты: ${JSON.stringify(data).substring(0, 100)}`, 'webrtc');
+            console.log('Обновление комнаты:', data);
             
             // Входящий вызов
             if (data.callRequest && !isCaller && callStatus === 'idle') {
-                showIncomingCall();
+                showIncomingCallModal();
+                callStatus = 'ringing';
+                updateStatus('Входящий вызов', 'connecting');
             }
             
             // Ответ на вызов
@@ -505,20 +530,6 @@
             });
             
             log('Отправлен запрос на вызов', 'info');
-        }
-
-        function showIncomingCall() {
-            document.getElementById('callerRoomId').textContent = currentRoomId;
-            document.getElementById('incomingCallModal').style.display = 'flex';
-            callStatus = 'ringing';
-            updateStatus('Входящий вызов', 'connecting');
-            
-            // Автоотклонение через 30 секунд
-            setTimeout(() => {
-                if (callStatus === 'ringing') {
-                    rejectCall();
-                }
-            }, 30000);
         }
 
         function acceptCall() {
@@ -618,8 +629,7 @@
                 setupAudioVisualization();
                 
                 // Показываем окно активного звонка
-                document.getElementById('activeRoomId').textContent = currentRoomId;
-                document.getElementById('activeCallModal').style.display = 'flex';
+                showActiveCallModal();
                 
             } catch (error) {
                 log(`Ошибка WebRTC: ${error.message}`, 'error');
@@ -788,11 +798,6 @@
             log('Другой пользователь завершил звонок', 'warning');
             alert('Другой пользователь завершил звонок');
             hangUp();
-        }
-
-        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-        function hideModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
         }
 
         // ========== ОЧИСТКА ПРИ ЗАКРЫТИИ ==========

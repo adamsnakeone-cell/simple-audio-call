@@ -3,57 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎧 Веб Звонилка</title>
+    <title>🎧 Звонилка (межсетевая)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
             min-height: 100vh;
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
         }
         
         .container {
             background: white;
             border-radius: 15px;
             padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
         }
         
         h1 {
             color: #333;
             text-align: center;
             margin-bottom: 20px;
-            font-size: 24px;
+            font-size: 26px;
         }
         
         input {
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             border: 2px solid #ddd;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 16px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            transition: 0.3s;
         }
         
         input:focus {
-            border-color: #667eea;
+            border-color: #1a2980;
             outline: none;
+            box-shadow: 0 0 0 3px rgba(26,41,128,0.1);
         }
         
-        .buttons {
+        .btn-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
@@ -61,61 +58,80 @@
         }
         
         button {
-            padding: 12px;
+            padding: 15px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 16px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        
-        button:hover:not(:disabled) {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        
-        #createBtn { background: #4CAF50; color: white; }
-        #joinBtn { background: #2196F3; color: white; }
-        #startCallBtn { background: #FF9800; color: white; grid-column: span 2; }
-        #hangupBtn { background: #f44336; color: white; grid-column: span 2; }
-        #testMicBtn { background: #9C27B0; color: white; font-size: 14px; padding: 8px; }
-        
-        button:disabled {
-            background: #ccc !important;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-        
-        .status {
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 15px 0;
-            text-align: center;
             font-weight: bold;
-            min-height: 40px;
+            cursor: pointer;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
         }
         
-        .status.connected { background: #e8f5e9; color: #2e7d32; }
-        .status.calling { background: #fff3e0; color: #ef6c00; }
-        .status.in-call { background: #e3f2fd; color: #1565c0; }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
         
-        .mic-test {
+        #createBtn { background: #00C853; color: white; }
+        #joinBtn { background: #2979FF; color: white; }
+        #callBtn { background: #FF6D00; color: white; grid-column: span 2; }
+        #hangupBtn { background: #D50000; color: white; grid-column: span 2; }
+        #testBtn { background: #AA00FF; color: white; padding: 10px; font-size: 14px; }
+        
+        button:disabled {
+            background: #bdbdbd !important;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .status-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+            min-height: 50px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin: 10px 0;
+            justify-content: center;
+            flex-direction: column;
+            gap: 5px;
         }
         
-        .mic-indicator {
-            height: 20px;
+        .status-box.ready { background: #E8F5E9; color: #2E7D32; }
+        .status-box.calling { background: #FFF3E0; color: #EF6C00; }
+        .status-box.connected { background: #E3F2FD; color: #1565C0; }
+        .status-box.error { background: #FFEBEE; color: #C62828; }
+        
+        .network-info {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .mic-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .mic-visual {
             flex: 1;
-            background: #eee;
+            height: 20px;
+            background: #e0e0e0;
             border-radius: 10px;
             overflow: hidden;
+            position: relative;
         }
         
         .mic-level {
@@ -125,17 +141,47 @@
             transition: width 0.1s;
         }
         
-        .log {
+        .mic-bars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            padding: 0 5px;
+        }
+        
+        .mic-bar {
+            width: 4px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 2px;
+            transition: height 0.1s;
+        }
+        
+        .log-box {
             background: #1a1a1a;
             color: #0f0;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 15px;
-            font-family: monospace;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
             font-size: 12px;
-            max-height: 150px;
+            max-height: 200px;
             overflow-y: auto;
+            line-height: 1.4;
         }
+        
+        .log-time {
+            color: #aaa;
+            margin-right: 10px;
+        }
+        
+        .log-success { color: #4CAF50; }
+        .log-error { color: #f44336; }
+        .log-warning { color: #FF9800; }
+        .log-info { color: #2196F3; }
         
         .modal {
             display: none;
@@ -144,10 +190,11 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             z-index: 1000;
             justify-content: center;
             align-items: center;
+            padding: 20px;
         }
         
         .modal-content {
@@ -155,86 +202,129 @@
             padding: 30px;
             border-radius: 15px;
             text-align: center;
-            max-width: 350px;
-            width: 90%;
+            max-width: 400px;
+            width: 100%;
+            animation: modalIn 0.3s;
+        }
+        
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .modal-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
         }
         
         .modal-buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 15px;
+            margin-top: 25px;
         }
         
         .modal-buttons button {
             flex: 1;
+            padding: 15px;
         }
         
-        .accept { background: #4CAF50; color: white; }
-        .reject { background: #f44336; color: white; }
+        .accept-btn { background: #00C853; }
+        .reject-btn { background: #D50000; }
+        
+        .ice-status {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 500px) {
+            .container { padding: 20px; }
+            .btn-group { grid-template-columns: 1fr; }
+            #callBtn, #hangupBtn { grid-column: span 1; }
+            button { padding: 12px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎧 Простая Звонилка</h1>
+        <h1>📞 Межсетевая Звонилка</h1>
         
-        <input type="text" id="roomId" placeholder="ID комнаты" value="1234">
+        <input type="text" id="roomId" placeholder="ID комнаты" value="5678">
         
-        <div class="buttons">
-            <button id="createBtn" onclick="createRoom()">Создать</button>
-            <button id="joinBtn" onclick="joinRoom()">Войти</button>
+        <div class="btn-group">
+            <button id="createBtn" onclick="createRoom()">➕ Создать</button>
+            <button id="joinBtn" onclick="joinRoom()">🚪 Войти</button>
         </div>
         
-        <div class="status" id="status">Готов к работе</div>
-        
-        <div class="buttons">
-            <button id="startCallBtn" onclick="startCall()" disabled>Позвонить</button>
-            <button id="hangupBtn" onclick="hangUp()" disabled>Завершить</button>
+        <div class="status-box" id="statusBox">
+            <div id="statusText">Готов к работе</div>
+            <div id="networkStatus" class="network-info">Локальная сеть</div>
+            <div id="iceStatus" class="ice-status"></div>
         </div>
         
-        <div class="mic-test">
-            <button id="testMicBtn" onclick="testMicrophone()">🎤 Тест</button>
-            <div class="mic-indicator">
+        <div class="btn-group">
+            <button id="callBtn" onclick="startCall()" disabled>📞 Позвонить</button>
+            <button id="hangupBtn" onclick="hangUp()" disabled>❌ Завершить</button>
+        </div>
+        
+        <div class="mic-area">
+            <button id="testBtn" onclick="testMicrophone()">🎤 Тест</button>
+            <div class="mic-visual">
                 <div class="mic-level" id="micLevel"></div>
+                <div class="mic-bars" id="micBars"></div>
             </div>
         </div>
         
-        <div class="log" id="log"></div>
+        <div class="log-box" id="logBox"></div>
     </div>
     
-    <!-- Модалки -->
+    <!-- Модальные окна -->
     <div class="modal" id="incomingModal">
         <div class="modal-content">
-            <div style="font-size: 40px;">📞</div>
-            <h3>Входящий вызов!</h3>
-            <p>ID комнаты: <strong id="callRoomId"></strong></p>
+            <div class="modal-icon">📞</div>
+            <div class="modal-title">Входящий вызов!</div>
+            <p>Комната: <strong id="callRoomId"></strong></p>
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">Сеть: <span id="callerNetwork"></span></p>
             <div class="modal-buttons">
-                <button class="accept" onclick="acceptCall()">Принять</button>
-                <button class="reject" onclick="rejectCall()">Отклонить</button>
+                <button class="accept-btn" onclick="acceptCall()">✅ Принять</button>
+                <button class="reject-btn" onclick="rejectCall()">❌ Отклонить</button>
             </div>
         </div>
     </div>
     
     <div class="modal" id="waitingModal">
         <div class="modal-content">
-            <div style="font-size: 40px;">⏳</div>
-            <h3>Ожидание ответа...</h3>
-            <p>ID комнаты: <strong id="waitRoomId"></strong></p>
-            <button class="reject" onclick="cancelCall()">Отменить</button>
+            <div class="modal-icon">⏳</div>
+            <div class="modal-title">Ожидание ответа...</div>
+            <p>Комната: <strong id="waitRoomId"></strong></p>
+            <p id="connectionType" style="color: #666; font-size: 14px; margin-top: 10px;">Устанавливаем соединение...</p>
+            <button class="reject-btn" onclick="cancelCall()" style="margin-top: 20px;">❌ Отменить</button>
         </div>
     </div>
     
     <div class="modal" id="activeModal">
         <div class="modal-content">
-            <div style="font-size: 40px;">🎧</div>
-            <h3>Идет разговор</h3>
-            <p>ID комнаты: <strong id="activeRoomId"></strong></p>
-            <div style="margin: 20px 0;">
-                <div>Громкость:</div>
-                <div class="mic-indicator" style="height: 10px;">
+            <div class="modal-icon">🎧</div>
+            <div class="modal-title">Разговор активен</div>
+            <p>Комната: <strong id="activeRoomId"></strong></p>
+            <div style="margin: 25px 0;">
+                <div style="margin-bottom: 10px; color: #666;">Ваша громкость:</div>
+                <div class="mic-visual" style="height: 15px;">
                     <div class="mic-level" id="callVolume"></div>
                 </div>
             </div>
-            <button class="reject" onclick="hangUp()">Завершить</button>
+            <div id="callStats" style="font-size: 12px; color: #666; margin: 10px 0;">
+                <!-- Статистика будет здесь -->
+            </div>
+            <button class="reject-btn" onclick="hangUp()" style="padding: 15px 30px; font-size: 16px;">
+                📞 Завершить звонок
+            </button>
         </div>
     </div>
 
@@ -245,9 +335,43 @@
             databaseURL: "https://simple-audio-call-default-rtdb.europe-west1.firebasedatabase.app"
         };
 
+        // БЕСПЛАТНЫЕ TURN серверы для работы между сетями
+        const TURN_SERVERS = [
+            // Free STUN servers
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            { urls: 'stun:stun.ekiga.net' },
+            { urls: 'stun:stun.ideasip.com' },
+            { urls: 'stun:stun.schlund.de' },
+            
+            // Free TURN servers (могут не работать, но попробуем)
+            {
+                urls: 'turn:numb.viagenie.ca',
+                username: 'webrtc@live.com',
+                credential: 'muazkh'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
+        ];
+
         // ========== ПЕРЕМЕННЫЕ ==========
         let localStream = null;
-        let remoteStream = null;
         let peerConnection = null;
         let database = null;
         let roomRef = null;
@@ -256,117 +380,155 @@
         let callStatus = 'idle';
         let audioContext = null;
         let analyser = null;
-        let micInterval = null;
+        let iceConnectionState = 'new';
+        let networkType = 'unknown';
+        let connectionType = 'unknown';
 
         // ========== ЛОГИРОВАНИЕ ==========
-        function log(msg, type = 'info') {
-            const logEl = document.getElementById('log');
+        function log(message, type = 'info') {
+            const logBox = document.getElementById('logBox');
             const time = new Date().toLocaleTimeString();
-            const icons = { 'success': '✅', 'error': '❌', 'warning': '⚠️', 'info': '📞' };
-            const entry = `${time} ${icons[type] || '📝'} ${msg}`;
-            logEl.innerHTML += entry + '<br>';
-            logEl.scrollTop = logEl.scrollHeight;
-            console.log(`[${type}] ${msg}`);
+            const colors = {
+                'success': 'log-success',
+                'error': 'log-error',
+                'warning': 'log-warning',
+                'info': 'log-info'
+            };
+            
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span class="log-time">${time}</span> <span class="${colors[type] || ''}">${message}</span>`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
         }
 
-        function updateStatus(text, className = '') {
-            const status = document.getElementById('status');
-            status.textContent = text;
-            status.className = 'status ' + className;
+        function updateStatus(text, statusClass = '', networkInfo = '') {
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('statusBox').className = 'status-box ' + statusClass;
+            
+            if (networkInfo) {
+                document.getElementById('networkStatus').textContent = networkInfo;
+            }
+        }
+
+        function updateIceStatus(state) {
+            iceConnectionState = state;
+            document.getElementById('iceStatus').textContent = `ICE: ${state}`;
+            log(`ICE состояние: ${state}`, 'info');
+        }
+
+        // ========== ОПРЕДЕЛЕНИЕ ТИПА СЕТИ ==========
+        async function detectNetwork() {
+            try {
+                // Проверяем сетевой интерфейс
+                if (navigator.connection) {
+                    const conn = navigator.connection;
+                    networkType = conn.type || 'unknown';
+                    connectionType = conn.effectiveType || 'unknown';
+                    
+                    log(`Сеть: ${networkType}, Тип: ${connectionType}`, 'info');
+                    document.getElementById('networkStatus').textContent = 
+                        `${networkType === 'wifi' ? 'WiFi' : networkType} (${connectionType})`;
+                    
+                    // Если мобильная сеть или медленная - используем TURN
+                    if (connectionType === 'slow-2g' || connectionType === '2g') {
+                        log('Медленная сеть, оптимизируем соединение', 'warning');
+                    }
+                }
+            } catch (e) {
+                log('Не удалось определить сеть', 'warning');
+            }
         }
 
         // ========== ТЕСТ МИКРОФОНА ==========
         async function testMicrophone() {
             try {
-                log('Тестирую микрофон...');
-                updateStatus('Проверка микрофона...', 'calling');
+                log('Запускаю тест микрофона...');
                 
-                // Останавливаем предыдущий тест
+                // Останавливаем предыдущий поток
                 if (localStream) {
                     localStream.getTracks().forEach(track => track.stop());
                 }
-                if (micInterval) clearInterval(micInterval);
                 
-                // ПРОСТЫЕ настройки микрофона
+                // Получаем микрофон с базовыми настройками
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: false,    // ВЫКЛЮЧАЕМ - может мешать
-                        noiseSuppression: false,    // ВЫКЛЮЧАЕМ
-                        autoGainControl: false,     // ВЫКЛЮЧАЕМ
                         channelCount: 1,
-                        sampleRate: 44100,
-                        sampleSize: 16,
-                        volume: 1.0
+                        sampleRate: 48000,
+                        echoCancellation: { ideal: true },
+                        noiseSuppression: { ideal: true },
+                        autoGainControl: { ideal: true }
                     }
                 });
                 
                 log('✅ Микрофон доступен');
                 
-                // Тестируем звук
+                // Создаем визуализацию
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
                 const source = audioContext.createMediaStreamSource(stream);
                 source.connect(analyser);
                 analyser.fftSize = 256;
                 
-                // Визуализация
-                micInterval = setInterval(() => {
+                // Создаем bars для визуализации
+                const micBars = document.getElementById('micBars');
+                micBars.innerHTML = '';
+                for (let i = 0; i < 10; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = 'mic-bar';
+                    micBars.appendChild(bar);
+                }
+                
+                // Анимация визуализации
+                const animate = () => {
                     const data = new Uint8Array(analyser.frequencyBinCount);
                     analyser.getByteFrequencyData(data);
                     
+                    // Уровень громкости
                     let sum = 0;
                     for (let i = 0; i < data.length; i++) sum += data[i];
                     let avg = sum / data.length;
                     let percent = Math.min(100, (avg / 128) * 100);
                     
+                    // Обновляем полосу
                     document.getElementById('micLevel').style.width = percent + '%';
                     
-                    // Цвет индикатора
-                    const level = document.getElementById('micLevel');
+                    // Обновляем bars
+                    const bars = micBars.children;
+                    for (let i = 0; i < bars.length; i++) {
+                        const barHeight = Math.min(100, (data[i * 10] || 0) / 2);
+                        bars[i].style.height = barHeight + '%';
+                        bars[i].style.background = barHeight > 30 ? '#4CAF50' : 
+                                                  barHeight > 15 ? '#FF9800' : '#f44336';
+                    }
+                    
+                    // Цвет основной полосы
+                    const levelEl = document.getElementById('micLevel');
                     if (percent > 30) {
-                        level.style.background = '#4CAF50';
-                        level.style.width = '100%';
+                        levelEl.style.background = '#4CAF50';
                     } else if (percent > 10) {
-                        level.style.background = '#FF9800';
-                        level.style.width = '50%';
+                        levelEl.style.background = '#FF9800';
                     } else {
-                        level.style.background = '#f44336';
-                        level.style.width = '10%';
+                        levelEl.style.background = '#f44336';
                     }
-                }, 100);
+                    
+                    requestAnimationFrame(animate);
+                };
                 
-                // Говорим пользователю
-                alert('ГОВОРИТЕ СЕЙЧАС! Проверяю микрофон...');
+                animate();
                 
-                // Ждем 3 секунды и проверяем
+                // Останавливаем через 10 секунд
                 setTimeout(() => {
-                    const data = new Uint8Array(analyser.frequencyBinCount);
-                    analyser.getByteFrequencyData(data);
-                    let hasSound = data.some(v => v > 10);
-                    
-                    if (hasSound) {
-                        log('✅ Микрофон работает отлично!', 'success');
-                        updateStatus('Микрофон готов', 'connected');
-                    } else {
-                        log('⚠️ Микрофон есть, но звука не слышно', 'warning');
-                        updateStatus('Говорите громче', 'calling');
-                    }
-                    
-                    // Останавливаем тест через 5 секунд
-                    setTimeout(() => {
-                        if (micInterval) clearInterval(micInterval);
-                        stream.getTracks().forEach(track => track.stop());
-                        if (audioContext) audioContext.close();
-                        document.getElementById('micLevel').style.width = '0%';
-                        updateStatus('Готов к звонку', 'connected');
-                    }, 5000);
-                    
-                }, 3000);
+                    stream.getTracks().forEach(track => track.stop());
+                    if (audioContext) audioContext.close();
+                    micBars.innerHTML = '';
+                    document.getElementById('micLevel').style.width = '0%';
+                    log('Тест микрофона завершен', 'success');
+                }, 10000);
                 
             } catch (error) {
                 log(`❌ Ошибка микрофона: ${error.message}`, 'error');
-                updateStatus('Нет доступа к микрофону', '');
-                alert('ДАЙТЕ РАЗРЕШЕНИЕ НА МИКРОФОН!');
+                alert('Разрешите доступ к микрофону в настройках браузера!');
             }
         }
 
@@ -399,21 +561,28 @@
                 
                 isCaller = isCreator;
                 
+                // Отключаем старый listener
+                if (roomRef) {
+                    roomRef.off();
+                }
+                
                 // Подключаемся к комнате
-                if (roomRef) roomRef.off();
                 roomRef = database.ref(`rooms/${currentRoomId}`);
                 
                 // Очищаем если создаем
                 if (isCreator) {
-                    roomRef.remove();
+                    roomRef.remove().catch(() => {});
                 }
                 
-                // Слушаем события
+                // Слушаем события комнаты
                 roomRef.on('value', handleRoomUpdate);
                 
-                updateStatus(`В комнате: ${currentRoomId}`, 'connected');
-                document.getElementById('startCallBtn').disabled = false;
-                log(`${isCreator ? 'Создал' : 'Вошел в'} комнату ${currentRoomId}`, 'success');
+                // Определяем тип сети
+                detectNetwork();
+                
+                updateStatus(`В комнате: ${currentRoomId}`, 'ready', 'Готов к звонку');
+                document.getElementById('callBtn').disabled = false;
+                log(`${isCreator ? 'Создана' : 'Вход в'} комнату ${currentRoomId}`, 'success');
                 
             } catch (error) {
                 log(`Ошибка подключения: ${error.message}`, 'error');
@@ -427,21 +596,22 @@
             // Входящий вызов
             if (data.callRequest && !isCaller && callStatus === 'idle') {
                 document.getElementById('callRoomId').textContent = currentRoomId;
+                document.getElementById('callerNetwork').textContent = networkType;
                 document.getElementById('incomingModal').style.display = 'flex';
                 callStatus = 'ringing';
-                log('Входящий вызов!', 'info');
+                log('📞 Входящий вызов!', 'info');
             }
             
             // Ответ на вызов
             if (data.callResponse && callStatus === 'calling') {
                 if (data.callResponse.accepted) {
-                    document.getElementById('waitingModal').style.display = 'none';
                     callStatus = 'in_call';
+                    document.getElementById('waitingModal').style.display = 'none';
                     startWebRTC(true);
                     log('✅ Вызов принят!', 'success');
                 } else {
-                    document.getElementById('waitingModal').style.display = 'none';
                     callStatus = 'idle';
+                    document.getElementById('waitingModal').style.display = 'none';
                     alert('Вызов отклонен');
                     log('Вызов отклонен', 'warning');
                 }
@@ -477,11 +647,11 @@
             roomRef.update({
                 callRequest: {
                     time: Date.now(),
-                    from: 'user'
+                    network: networkType
                 }
             });
             
-            log('Вызываю...', 'info');
+            log('Отправляю запрос на вызов...', 'info');
         }
 
         function acceptCall() {
@@ -491,12 +661,13 @@
             roomRef.update({
                 callResponse: {
                     accepted: true,
-                    time: Date.now()
+                    time: Date.now(),
+                    network: networkType
                 }
             });
             
             startWebRTC(false);
-            log('Принял вызов', 'success');
+            log('Вызов принят', 'success');
         }
 
         function rejectCall() {
@@ -510,108 +681,180 @@
                 }
             });
             
-            log('Отклонил вызов', 'warning');
+            log('Вызов отклонен', 'warning');
         }
 
         function cancelCall() {
             document.getElementById('waitingModal').style.display = 'none';
             callStatus = 'idle';
             roomRef.update({ callRequest: null });
-            log('Отменил вызов', 'warning');
+            log('Вызов отменен', 'warning');
         }
 
-        // ========== WEBRTC (УПРОЩЕННЫЙ) ==========
+        // ========== WEBRTC С ПОДДЕРЖКОЙ TURN ==========
         async function startWebRTC(isInitiator) {
             try {
-                updateStatus('Подключаюсь...', 'calling');
+                updateStatus('Устанавливаю соединение...', 'calling', 'Межсетевое подключение');
                 
-                // ПРОСТОЙ запрос микрофона
+                // Получаем микрофон
                 localStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        channelCount: 1
+                        channelCount: 1,
+                        sampleRate: 48000,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
                     }
                 });
                 
                 log('✅ Микрофон готов для звонка');
                 
-                // Создаем PeerConnection с минимальными настройками
-                peerConnection = new RTCPeerConnection({
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                });
+                // Создаем PeerConnection с TURN серверами
+                const pcConfig = {
+                    iceServers: TURN_SERVERS,
+                    iceTransportPolicy: 'all', // Пробуем и TURN и STUN
+                    iceCandidatePoolSize: 10,
+                    rtcpMuxPolicy: 'require',
+                    bundlePolicy: 'max-bundle'
+                };
                 
-                // Добавляем наш микрофон
+                peerConnection = new RTCPeerConnection(pcConfig);
+                
+                // Добавляем локальный поток
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                 });
                 
-                // Когда получаем удаленный звук
-                peerConnection.ontrack = (event) => {
-                    log('✅ Получил удаленный звук!', 'success');
-                    
-                    if (!remoteStream) {
-                        remoteStream = new MediaStream();
-                    }
-                    remoteStream.addTrack(event.track);
-                    
-                    // Воспроизводим звук
-                    const audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.autoplay = true;
-                    audio.volume = 1.0;
-                    
-                    // Проверяем что звук играет
-                    setTimeout(() => {
-                        if (audio.duration > 0 && !audio.paused) {
-                            log('🔊 Звук воспроизводится!', 'success');
-                            updateStatus('Говорите!', 'in-call');
-                        }
-                    }, 1000);
-                };
+                // Настраиваем обработчики
+                setupPeerConnectionHandlers(isInitiator);
                 
-                // ICE кандидаты
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        roomRef.update({ iceCandidate: event.candidate });
-                    }
-                };
-                
-                // Состояние соединения
-                peerConnection.onconnectionstatechange = () => {
-                    const state = peerConnection.connectionState;
-                    log(`Соединение: ${state}`, 'webrtc');
-                    
-                    if (state === 'connected') {
-                        log('✅ СОЕДИНЕНИЕ УСТАНОВЛЕНО!', 'success');
-                        document.getElementById('activeRoomId').textContent = currentRoomId;
-                        document.getElementById('activeModal').style.display = 'flex';
-                        updateStatus('Соединено! Говорите.', 'in-call');
-                        startVolumeMeter();
-                    }
-                    
-                    if (state === 'disconnected' || state === 'failed') {
-                        log('❌ Соединение потеряно', 'error');
-                        hangUp();
-                    }
-                };
-                
-                // Создаем предложение если мы инициатор
+                // Создаем offer если инициатор
                 if (isInitiator) {
-                    const offer = await peerConnection.createOffer();
+                    const offer = await peerConnection.createOffer({
+                        offerToReceiveAudio: true,
+                        voiceActivityDetection: true
+                    });
+                    
                     await peerConnection.setLocalDescription(offer);
                     roomRef.update({ offer: offer });
-                    log('Отправил предложение', 'webrtc');
+                    log('📤 Отправил WebRTC предложение', 'info');
                 }
+                
+                // Запускаем визуализацию
+                startCallVolumeMeter();
+                
+                // Показываем модалку активного звонка
+                document.getElementById('activeRoomId').textContent = currentRoomId;
+                document.getElementById('activeModal').style.display = 'flex';
+                updateStatus('Разговор активен', 'connected', 'Межсетевое соединение');
                 
             } catch (error) {
                 log(`❌ WebRTC ошибка: ${error.message}`, 'error');
                 hangUp();
             }
+        }
+
+        function setupPeerConnectionHandlers(isInitiator) {
+            // ICE кандидаты
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const candidate = event.candidate;
+                    const type = candidate.type;
+                    const protocol = candidate.protocol;
+                    const address = candidate.address || 'hidden';
+                    
+                    log(`ICE кандидат: ${type}/${protocol} ${address}`, 'info');
+                    roomRef.update({ iceCandidate: event.candidate });
+                }
+            };
+            
+            // ICE состояние
+            peerConnection.oniceconnectionstatechange = () => {
+                const state = peerConnection.iceConnectionState;
+                updateIceStatus(state);
+                document.getElementById('connectionType').textContent = `ICE: ${state}`;
+                
+                if (state === 'connected' || state === 'completed') {
+                    log(`✅ Соединение установлено через ${getConnectionType()}`, 'success');
+                    updateStatus('Соединено!', 'connected', `Тип: ${getConnectionType()}`);
+                }
+                
+                if (state === 'failed') {
+                    log('❌ ICE соединение не удалось', 'error');
+                    // Пробуем переподключиться с другими настройками
+                    setTimeout(() => {
+                        if (callStatus === 'in_call' && peerConnection.iceConnectionState === 'failed') {
+                            log('Пробую альтернативные настройки...', 'warning');
+                            restartWithDifferentConfig();
+                        }
+                    }, 2000);
+                }
+            };
+            
+            // Удаленный поток
+            peerConnection.ontrack = (event) => {
+                log('✅ Получил удаленный аудиопоток', 'success');
+                
+                const remoteStream = new MediaStream();
+                remoteStream.addTrack(event.track);
+                
+                // Воспроизводим звук
+                const audio = new Audio();
+                audio.srcObject = remoteStream;
+                audio.autoplay = true;
+                audio.volume = 1.0;
+                
+                // Проверяем воспроизведение
+                setTimeout(() => {
+                    if (audio.duration > 0 && !audio.paused) {
+                        log('🔊 Удаленный звук воспроизводится!', 'success');
+                        
+                        // Обновляем статистику
+                        updateCallStats();
+                    }
+                }, 1000);
+            };
+            
+            // Общее состояние соединения
+            peerConnection.onconnectionstatechange = () => {
+                const state = peerConnection.connectionState;
+                log(`Состояние соединения: ${state}`, 'webrtc');
+                
+                if (state === 'connected') {
+                    log('🎉 СОЕДИНЕНИЕ УСТАНОВЛЕНО! Можете говорить.', 'success');
+                }
+                
+                if (state === 'disconnected' || state === 'failed') {
+                    log('⚠️ Соединение потеряно', 'warning');
+                    setTimeout(() => {
+                        if (peerConnection && peerConnection.connectionState !== 'connected') {
+                            hangUp();
+                        }
+                    }, 3000);
+                }
+            };
+        }
+
+        function getConnectionType() {
+            if (!peerConnection) return 'unknown';
+            
+            const stats = peerConnection.getStats();
+            stats.then(statReport => {
+                statReport.forEach(report => {
+                    if (report.type === 'candidate-pair' && report.nominated) {
+                        const localCandidate = statReport.get(report.localCandidateId);
+                        const remoteCandidate = statReport.get(report.remoteCandidateId);
+                        
+                        if (localCandidate && remoteCandidate) {
+                            const type = localCandidate.candidateType;
+                            log(`Тип соединения: ${type}`, 'info');
+                            return type;
+                        }
+                    }
+                });
+            });
+            
+            return iceConnectionState === 'connected' ? 'P2P' : 'TURN/Relay';
         }
 
         async function handleOffer(offer) {
@@ -620,31 +863,54 @@
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 roomRef.update({ answer: answer });
-                log('Отправил ответ', 'webrtc');
+                log('📤 Отправил WebRTC ответ', 'info');
             } catch (error) {
-                log(`Ошибка offer: ${error}`, 'error');
+                log(`Ошибка обработки offer: ${error}`, 'error');
             }
         }
 
         async function handleAnswer(answer) {
             try {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                log('Получил ответ', 'webrtc');
+                log('✅ Получил и обработал WebRTC ответ', 'success');
             } catch (error) {
-                log(`Ошибка answer: ${error}`, 'error');
+                log(`Ошибка обработки answer: ${error}`, 'error');
             }
         }
 
         async function handleIceCandidate(candidate) {
             try {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                if (peerConnection.remoteDescription) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                }
             } catch (error) {
-                // Игнорируем ошибки ICE
+                // Игнорируем некоторые ошибки ICE
             }
         }
 
-        // ========== ИНДИКАТОР ГРОМКОСТИ ==========
-        function startVolumeMeter() {
+        function restartWithDifferentConfig() {
+            log('Перезапускаю с упрощенной конфигурацией...', 'warning');
+            
+            // Упрощенная конфигурация без TURN
+            const simpleConfig = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ],
+                iceTransportPolicy: 'all'
+            };
+            
+            // Перезапускаем соединение
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
+            peerConnection = new RTCPeerConnection(simpleConfig);
+            // ... переподключение
+        }
+
+        // ========== ВИЗУАЛИЗАЦИЯ ВО ВРЕМЯ ЗВОНКА ==========
+        function startCallVolumeMeter() {
             if (!localStream) return;
             
             try {
@@ -653,8 +919,9 @@
                 const source = audioContext.createMediaStreamSource(localStream);
                 source.connect(analyser);
                 analyser.fftSize = 64;
+                analyser.smoothingTimeConstant = 0.8;
                 
-                const checkVolume = () => {
+                const updateVolume = () => {
                     if (callStatus !== 'in_call') return;
                     
                     const data = new Uint8Array(analyser.frequencyBinCount);
@@ -663,26 +930,44 @@
                     let sum = 0;
                     for (let i = 0; i < data.length; i++) sum += data[i];
                     let avg = sum / data.length;
-                    let percent = Math.min(100, (avg / 64) * 200); // Усиливаем
+                    let percent = Math.min(100, (avg / 32) * 100);
                     
                     document.getElementById('callVolume').style.width = percent + '%';
                     
-                    // Цвет при разговоре
+                    // Цвет в зависимости от громкости
                     const volumeEl = document.getElementById('callVolume');
-                    if (percent > 20) {
+                    if (percent > 25) {
                         volumeEl.style.background = '#4CAF50';
+                        volumeEl.style.boxShadow = '0 0 10px #4CAF50';
+                    } else if (percent > 10) {
+                        volumeEl.style.background = '#FF9800';
+                        volumeEl.style.boxShadow = '0 0 5px #FF9800';
                     } else {
                         volumeEl.style.background = '#9E9E9E';
+                        volumeEl.style.boxShadow = 'none';
                     }
                     
-                    requestAnimationFrame(checkVolume);
+                    requestAnimationFrame(updateVolume);
                 };
                 
-                checkVolume();
+                updateVolume();
                 
             } catch (error) {
-                console.log('Индикатор не работает:', error);
+                console.log('Индикатор громкости не доступен:', error);
             }
+        }
+
+        function updateCallStats() {
+            const statsDiv = document.getElementById('callStats');
+            if (!statsDiv) return;
+            
+            const stats = `
+                Сеть: ${networkType}<br>
+                Соединение: ${getConnectionType()}<br>
+                Статус: ${iceConnectionState}
+            `;
+            
+            statsDiv.innerHTML = stats;
         }
 
         // ========== ЗАВЕРШЕНИЕ ==========
@@ -691,13 +976,13 @@
             
             callStatus = 'idle';
             
-            // Сигнал о завершении
+            // Отправляем сигнал о завершении
             if (roomRef) {
                 roomRef.update({ hangup: true });
                 setTimeout(() => roomRef.update({ hangup: null }), 1000);
             }
             
-            // Закрываем соединение
+            // Закрываем соединения
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -707,11 +992,6 @@
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
-            }
-            
-            if (remoteStream) {
-                remoteStream.getTracks().forEach(track => track.stop());
-                remoteStream = null;
             }
             
             // Закрываем аудио контекст
@@ -725,14 +1005,14 @@
             document.getElementById('waitingModal').style.display = 'none';
             document.getElementById('activeModal').style.display = 'none';
             
-            // Обновляем статус
+            // Обновляем UI
             if (currentRoomId) {
-                updateStatus(`В комнате: ${currentRoomId}`, 'connected');
+                updateStatus(`В комнате: ${currentRoomId}`, 'ready', 'Готов к звонку');
             } else {
                 updateStatus('Готов к работе', '');
             }
             
-            document.getElementById('startCallBtn').disabled = !currentRoomId;
+            document.getElementById('callBtn').disabled = !currentRoomId;
             document.getElementById('hangupBtn').disabled = true;
             
             log('Звонок завершен', 'info');
@@ -740,8 +1020,9 @@
 
         // ========== ИНИЦИАЛИЗАЦИЯ ==========
         function init() {
-            log('Приложение загружено', 'success');
-            updateStatus('Введите ID комнаты');
+            log('Межсетевая звонка загружена', 'success');
+            updateStatus('Готов к работе', '');
+            detectNetwork();
         }
 
         // Очистка при закрытии
